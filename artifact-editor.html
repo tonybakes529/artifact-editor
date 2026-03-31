@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HTML Artifact Editor</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.toolbar {
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 12px 20px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  flex-wrap: wrap;
+}
+
+.toolbar-nav {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.step-counter {
+  font-size: 11px;
+  color: #666;
+  padding: 0 8px;
+  border-left: 1px solid #ddd;
+  border-right: 1px solid #ddd;
+}
+
+button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+button:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+button.primary {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+button.primary:hover {
+  background: #1d4ed8;
+}
+
+#file-input {
+  display: none;
+}
+
+.toolbar-spacer {
+  flex: 1;
+}
+
+.status {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.status.success {
+  background: #dff0d8;
+  color: #3c763d;
+}
+
+.status.error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  gap: 0;
+}
+
+#preview-area {
+  flex: 1;
+  background: #eee;
+  overflow: auto;
+  padding: 20px;
+  position: relative;
+}
+
+#preview-wrapper {
+  background: white;
+  margin: 0 auto;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+}
+
+.sidebar {
+  width: 300px;
+  background: white;
+  border-left: 1px solid #e0e0e0;
+  padding: 20px;
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.sidebar.show {
+  display: flex;
+}
+
+.edit-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.edit-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+.edit-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+textarea.edit-input {
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+}
+
+.color-label {
+  font-size: 11px;
+  color: #999;
+  margin-top: 6px;
+}
+
+.colors-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.color-swatch {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.color-swatch:hover {
+  border-color: #ddd;
+}
+
+.color-swatch.selected {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+.color-swatch-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  pointer-events: none;
+  text-align: center;
+  padding: 2px;
+}
+
+.sidebar-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-close:hover {
+  background: #eee;
+}
+
+/* EDITABLE ELEMENTS */
+[data-editable] {
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+
+[data-editable]:hover {
+  background-color: rgba(37, 99, 235, 0.08);
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.2);
+}
+
+[data-editable].selected {
+  background-color: rgba(37, 99, 235, 0.12);
+  box-shadow: inset 0 0 0 2px #2563eb;
+}
+
+.no-content {
+  text-align: center;
+  color: #666;
+  padding: 60px 40px;
+}
+
+.no-content p {
+  margin-bottom: 12px;
+}
+
+button.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="primary" id="btn-upload">Upload HTML File</button>
+  <button id="btn-export">Export HTML</button>
+  <button id="btn-edit-page" disabled>Edit this page</button>
+  <input type="file" id="file-input" accept=".html">
+
+  <div class="toolbar-nav" id="toolbar-nav" style="display: none;">
+    <button id="btn-prev">← Back</button>
+    <span class="step-counter" id="step-counter"></span>
+    <button id="btn-next">Next →</button>
+  </div>
+
+  <div class="toolbar-spacer"></div>
+  <div id="status"></div>
+</div>
+
+<div class="main">
+  <div id="preview-area">
+    <div id="preview-wrapper">
+      <div class="no-content">
+        <p>📄 Upload an HTML file to get started</p>
+        <p style="font-size: 12px; color: #999;">Click any text to edit it</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar" id="sidebar">
+    <button class="sidebar-close" id="btn-close-sidebar">×</button>
+
+    <div class="edit-section">
+      <div class="section-title">Edit Text</div>
+      <textarea class="edit-input" id="text-input" placeholder="Click text to edit..."></textarea>
+    </div>
+
+    <div class="edit-section">
+      <div class="section-title">Element Color</div>
+      <div class="colors-grid" id="colors-grid"></div>
+    </div>
+
+    <div class="edit-section">
+      <div class="section-title">Custom Color</div>
+      <input type="color" id="custom-color" class="edit-input" style="height: 40px; cursor: pointer;">
+    </div>
+  </div>
+</div>
+
+<script>
+let htmlContent = null;
+let extractedColors = [];
+let currentElement = null;
+let sections = [];
+let currentSectionIndex = 0;
+let stepsArray = [];
+let hasStepsData = false;
+
+// ============ FILE UPLOAD ============
+document.getElementById('btn-upload').addEventListener('click', () => {
+  document.getElementById('file-input').click();
+});
+
+document.getElementById('file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      htmlContent = evt.target.result;
+      sections = [];
+      currentSectionIndex = 0;
+      renderPreview();
+      extractColors();
+      // Enable the "Edit this page" button
+      document.getElementById('btn-edit-page').disabled = false;
+      showStatus('✓ HTML loaded', 'success');
+    } catch (e) {
+      showStatus('✗ Error loading HTML', 'error');
+    }
+  };
+  reader.readAsText(file);
+});
+
+// ============ EXTRACT COLORS ============
+function extractColors() {
+  extractedColors = [];
+  const wrapper = document.getElementById('preview-wrapper');
+
+  // Extract from CSS variables
+  const style = wrapper.querySelector('style');
+  if (style) {
+    const cssText = style.textContent;
+    const varMatches = cssText.match(/--[\w-]+:\s*([#\w]+)/g);
+    if (varMatches) {
+      varMatches.forEach(match => {
+        const color = match.match(/(#[\da-fA-F]{6}|\w+)/g)?.[1];
+        if (color && !extractedColors.includes(color)) {
+          extractedColors.push(color);
+        }
+      });
+    }
+  }
+
+  // Extract from inline styles and attributes
+  const allElements = wrapper.querySelectorAll('[style*="color"], [fill], [stroke]');
+  allElements.forEach(el => {
+    const style = el.getAttribute('style');
+    const fill = el.getAttribute('fill');
+    const stroke = el.getAttribute('stroke');
+
+    [style, fill, stroke].forEach(attr => {
+      if (attr) {
+        const match = attr.match(/#[\da-fA-F]{6}/g);
+        if (match) {
+          match.forEach(color => {
+            if (!extractedColors.includes(color)) {
+              extractedColors.push(color);
+            }
+          });
+        }
+      }
+    });
+  });
+
+  renderColorGrid();
+}
+
+// ============ RENDER COLOR GRID ============
+function renderColorGrid() {
+  const grid = document.getElementById('colors-grid');
+  grid.innerHTML = extractedColors.map(color => `
+    <div class="color-swatch" style="background-color: ${color};" data-color="${color}">
+      <div class="color-swatch-label">${color.substring(1).toUpperCase()}</div>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('.color-swatch').forEach(swatch => {
+    swatch.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (currentElement) {
+        applyColor(swatch.getAttribute('data-color'));
+        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+        swatch.classList.add('selected');
+      }
+    });
+  });
+}
+
+// ============ PARSE STEPS ARRAY ============
+function parseStepsArray() {
+  // Try to extract STEPS array from the HTML
+  const stepsMatch = htmlContent.match(/const\s+STEPS\s*=\s*\[([\s\S]*?)\];/);
+  if (!stepsMatch) return false;
+
+  try {
+    const stepsCode = '[' + stepsMatch[1] + ']';
+    // Parse the STEPS array
+    stepsArray = eval(stepsCode);
+    hasStepsData = true;
+    return true;
+  } catch (e) {
+    console.log('Could not parse STEPS array:', e);
+    return false;
+  }
+}
+
+// ============ DETECT SECTIONS ============
+function detectSections() {
+  // First try to parse STEPS array
+  if (parseStepsArray()) {
+    sections = stepsArray;
+    return sections.length;
+  }
+
+  // Fallback: detect slide elements
+  const temp = document.createElement('div');
+  temp.innerHTML = htmlContent;
+
+  // Look for common section/slide patterns
+  let sectionElements = temp.querySelectorAll('[class*="slide"], [class*="section"], [class*="step"], [id*="slide"], [id*="section"]');
+
+  if (sectionElements.length > 1) {
+    // Store section IDs/selectors instead of HTML
+    sections = Array.from(sectionElements).map((el, idx) => ({
+      id: el.id || `section-${idx}`,
+      selector: el.id ? `#${el.id}` : `[class*="slide"]:nth-of-type(${idx + 1})`
+    }));
+  } else {
+    // If no sections found, treat entire content as one section
+    sections = [{ id: 'full', selector: '*' }];
+  }
+
+  return sections.length;
+}
+
+// ============ RENDER PREVIEW ============
+function renderPreview() {
+  const wrapper = document.getElementById('preview-wrapper');
+
+  // Load full HTML with all styles intact
+  wrapper.innerHTML = htmlContent;
+
+  if (sections.length === 0) {
+    detectSections();
+  }
+
+  // Hide all sections initially
+  const allSections = wrapper.querySelectorAll('[class*="slide"], [class*="section"], [class*="step"]');
+  allSections.forEach(el => {
+    el.style.display = 'none';
+  });
+
+  // Show first section
+  currentSectionIndex = 0;
+  showSection(0);
+
+  closeSidebar();
+}
+
+function showSection(index) {
+  if (index < 0 || index >= sections.length) return;
+
+  currentSectionIndex = index;
+  const wrapper = document.getElementById('preview-wrapper');
+
+  if (hasStepsData) {
+    // Handle STEPS array objects with granular element control
+    const step = sections[index];
+
+    // Remove .active class from all slides
+    const allSlides = wrapper.querySelectorAll('.slide');
+    allSlides.forEach(el => {
+      el.classList.remove('active');
+    });
+
+    // Add .active class to target slide
+    const targetSlideId = `slide-${step.slide}`;
+    const targetSlide = wrapper.querySelector(`#${targetSlideId}`);
+    if (targetSlide) {
+      targetSlide.classList.add('active');
+
+      // Remove .show class from all elements in the slide
+      const allElements = targetSlide.querySelectorAll('[id]');
+      allElements.forEach(el => {
+        el.classList.remove('show');
+      });
+
+      // Add .show class to elements in the show array
+      if (step.show && Array.isArray(step.show)) {
+        step.show.forEach(elementId => {
+          const el = targetSlide.querySelector(`#${elementId}`);
+          if (el) {
+            el.classList.add('show');
+          }
+        });
+      }
+
+      // Apply activeCard styling if defined
+      if (step.activeCard) {
+        const activeEl = targetSlide.querySelector(`#${step.activeCard}`);
+        if (activeEl) {
+          activeEl.classList.add('active-card');
+        }
+      }
+    }
+  } else {
+    // Handle simple slide objects (fallback)
+    // Hide all sections using display property
+    const allSections = wrapper.querySelectorAll('[class*="slide"], [class*="section"], [class*="step"]');
+    allSections.forEach(el => {
+      el.style.display = 'none';
+    });
+
+    // Show current section
+    if (sections[index].id !== 'full') {
+      const section = wrapper.querySelector(`#${sections[index].id}`);
+      if (section) {
+        section.style.display = 'block';
+      }
+    } else {
+      // If no sections, show everything
+      wrapper.style.display = 'block';
+    }
+  }
+
+  // Make text elements editable
+  makeEditable();
+  closeSidebar();
+
+  // Update navigation UI
+  updateNavigation();
+}
+
+function updateNavigation() {
+  const navContainer = document.getElementById('toolbar-nav');
+  const counter = document.getElementById('step-counter');
+  const prevBtn = document.getElementById('btn-prev');
+  const nextBtn = document.getElementById('btn-next');
+
+  if (sections.length > 1) {
+    navContainer.style.display = 'flex';
+    counter.textContent = `Step ${currentSectionIndex + 1} of ${sections.length}`;
+    prevBtn.disabled = currentSectionIndex === 0;
+    nextBtn.disabled = currentSectionIndex === sections.length - 1;
+  } else {
+    navContainer.style.display = 'none';
+  }
+}
+
+function makeEditable() {
+  const wrapper = document.getElementById('preview-wrapper');
+  const textElements = wrapper.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, div, a, button');
+
+  textElements.forEach(el => {
+    // Skip script, style, and empty elements
+    if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') return;
+    if (!el.textContent.trim()) return;
+
+    // Skip if only contains other elements
+    if (el.children.length > 0 && el.textContent !== el.innerText) return;
+
+    el.setAttribute('data-editable', '1');
+    // Initially disable editing (pointer-events: none)
+    el.style.pointerEvents = 'none';
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      editElement(el);
+    });
+  });
+}
+
+// ============ EDIT ELEMENT ============
+function editElement(el) {
+  // Deselect previous
+  if (currentElement) currentElement.classList.remove('selected');
+
+  currentElement = el;
+  el.classList.add('selected');
+
+  const text = el.textContent;
+  document.getElementById('text-input').value = text;
+
+  // Detect current color
+  const computed = window.getComputedStyle(el);
+  const currentColor = computed.color;
+  const bgColor = computed.backgroundColor;
+
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+
+  document.getElementById('sidebar').classList.add('show');
+}
+
+function applyColor(color) {
+  if (!currentElement) return;
+  currentElement.style.color = color;
+}
+
+document.getElementById('text-input').addEventListener('input', (e) => {
+  if (currentElement) {
+    currentElement.textContent = e.target.value;
+  }
+});
+
+document.getElementById('custom-color').addEventListener('input', (e) => {
+  applyColor(e.target.value);
+});
+
+document.getElementById('btn-close-sidebar').addEventListener('click', closeSidebar);
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('show');
+  if (currentElement) currentElement.classList.remove('selected');
+  currentElement = null;
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('[data-editable]') && !e.target.closest('#sidebar')) {
+    closeSidebar();
+  }
+});
+
+// ============ EXPORT ============
+document.getElementById('btn-export').addEventListener('click', () => {
+  if (!htmlContent) {
+    showStatus('✗ No HTML loaded', 'error');
+    return;
+  }
+
+  const html = document.getElementById('preview-wrapper').innerHTML;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'artifact-edited.html';
+  a.click();
+  URL.revokeObjectURL(url);
+  showStatus('✓ HTML exported', 'success');
+});
+
+function showStatus(msg, type) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = `status ${type}`;
+  if (type === 'success') {
+    setTimeout(() => {
+      el.textContent = '';
+      el.className = 'status';
+    }, 2000);
+  }
+}
+
+// ============ NAVIGATION ============
+document.getElementById('btn-next').addEventListener('click', () => {
+  if (currentSectionIndex < sections.length - 1) {
+    showSection(currentSectionIndex + 1);
+  }
+});
+
+document.getElementById('btn-prev').addEventListener('click', () => {
+  if (currentSectionIndex > 0) {
+    showSection(currentSectionIndex - 1);
+  }
+});
+
+// Keyboard navigation
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight') {
+    document.getElementById('btn-next').click();
+  } else if (e.key === 'ArrowLeft') {
+    document.getElementById('btn-prev').click();
+  }
+});
+
+// ============ TOGGLE EDIT MODE ============
+let editModeEnabled = false;
+
+document.getElementById('btn-edit-page').addEventListener('click', () => {
+  editModeEnabled = !editModeEnabled;
+  const btn = document.getElementById('btn-edit-page');
+  const wrapper = document.getElementById('preview-wrapper');
+
+  if (editModeEnabled) {
+    btn.classList.add('active');
+    btn.textContent = 'Exit Edit Mode';
+    // Enable click-to-edit on all editable elements
+    wrapper.querySelectorAll('[data-editable]').forEach(el => {
+      el.style.pointerEvents = 'auto';
+    });
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = 'Edit this page';
+    // Disable click-to-edit
+    closeSidebar();
+    wrapper.querySelectorAll('[data-editable]').forEach(el => {
+      el.style.pointerEvents = 'none';
+    });
+  }
+});
+</script>
+
+</body>
+</html>
