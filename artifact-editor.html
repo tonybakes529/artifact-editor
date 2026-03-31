@@ -579,12 +579,17 @@ function makeEditable() {
     // Skip if only contains other elements
     if (el.children.length > 0 && el.textContent !== el.innerText) return;
 
+    // Only mark as editable and add listener once
+    if (el.getAttribute('data-editable')) return;
+
     el.setAttribute('data-editable', '1');
     // Initially disable editing (pointer-events: none)
     el.style.pointerEvents = 'none';
     el.addEventListener('click', (e) => {
       e.stopPropagation();
-      editElement(el);
+      if (editModeEnabled) {
+        editElement(el);
+      }
     });
   });
 }
